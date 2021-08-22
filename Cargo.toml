@@ -2,5 +2,9 @@
 name = "postbus"
 version = "0.1.0"
 edition = "2018"
+description = "SMTP server for Rust"
+license = "MIT"
+repository = "https://github.com/nexiumapp/postbus"
+categories = ["email", "parser-implementations", "network-programming"]
 
 [dependencies]
