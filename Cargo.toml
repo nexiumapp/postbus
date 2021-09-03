@@ -8,3 +8,7 @@ repository = "https://github.com/nexiumapp/postbus"
 categories = ["email", "parser-implementations", "network-programming"]
 
 [dependencies]
+nom = "7.0.0"
+
+[dev-dependencies]
+tokio = { version="1.10.0", features=["rt", "rt-multi-thread", "macros", "net"] }
