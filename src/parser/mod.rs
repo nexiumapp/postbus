@@ -71,7 +71,7 @@ fn parse_domain(input: &str) -> NomResult<result::DomainParam> {
 }
 
 fn parse_subdomain(input: &str) -> NomResult<&str> {
-    recognize(pair(parse_letdig, many0(parse_ldhstr)))(input)
+    recognize(pair(parse_letdig, opt(parse_ldhstr)))(input)
 }
 
 fn parse_letdig(input: &str) -> NomResult<&str> {
