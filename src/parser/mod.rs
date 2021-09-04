@@ -17,6 +17,7 @@ pub enum ParseResult<'a> {
     EHLO(&'a str),
     HELO(&'a str),
     Mailbox(&'a str, &'a str),
+    DATA,
 }
 
 impl<'a> Display for ParseResult<'a> {
@@ -24,6 +25,7 @@ impl<'a> Display for ParseResult<'a> {
         match self {
             ParseResult::EHLO(ident) => writeln!(f, "EHLO {:?}", ident),
             ParseResult::HELO(ident) => writeln!(f, "HELO {:?}", ident),
+            ParseResult::DATA => writeln!(f, "DATA"),
             ParseResult::Mailbox(user, domain) => writeln!(f, "{}@{}", user, domain),
         }
     }
@@ -32,7 +34,7 @@ impl<'a> Display for ParseResult<'a> {
 /// Parse an SMTP command.
 /// It automatically splits the commands into lines, so raw strings can be put in.
 pub fn parse(input: &str) -> NomResult<ParseResult> {
-    alt((parse_ehlo, parse_helo))(input)
+    alt((parse_ehlo, parse_helo, parse_data))(input)
 }
 fn parse_ehlo(input: &str) -> NomResult<ParseResult> {
     let (remaining, domain) = delimited(tag_no_case("EHLO "), parse_domain, line_ending)(input)?;
@@ -44,6 +46,12 @@ fn parse_helo(input: &str) -> NomResult<ParseResult> {
     let (remaining, domain) = delimited(tag_no_case("HELO "), parse_domain, line_ending)(input)?;
 
     Ok((remaining, ParseResult::HELO(domain)))
+}
+
+fn parse_data(input: &str) -> NomResult<ParseResult> {
+    let (rem, _) = tuple((tag_no_case("DATA"), line_ending))(input)?;
+
+    Ok((rem, ParseResult::DATA))
 }
 
 fn parse_mailbox(input: &str) -> NomResult<ParseResult> {
@@ -130,7 +138,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_ehlo() {
+    fn parse_ehlo_simple() {
         let (rem, cmd) = parse("EHLO nexium.app\r\n").unwrap();
 
         assert_eq!(ParseResult::EHLO("nexium.app"), cmd);
@@ -164,7 +172,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_helo() {
+    fn parse_helo_simple() {
         let (rem, cmd) = parse("HELO nexium.app\r\n").unwrap();
 
         assert_eq!(ParseResult::HELO("nexium.app"), cmd);
@@ -177,8 +185,8 @@ mod tests {
 
         assert_eq!(
             nom::Err::Error(nom::error::Error::from_error_kind(
-                "\r\n",
-                nom::error::ErrorKind::TakeWhileMN
+                "HELO \r\n",
+                nom::error::ErrorKind::Tag
             )),
             err
         );
@@ -195,6 +203,14 @@ mod tests {
             )),
             err
         );
+    }
+
+    #[test]
+    fn parse_data_simple() {
+        let (rem, cmd) = parse("DATA\r\n").unwrap();
+
+        assert_eq!(ParseResult::DATA, cmd);
+        assert_eq!("", rem);
     }
 
     #[test]
