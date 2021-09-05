@@ -228,6 +228,14 @@ fn parse_command_data_simple() {
 }
 
 #[test]
+fn parse_command_reset_simple() {
+    let (rem, cmd) = parse_command("RSET").unwrap();
+
+    assert_eq!(result::ParseCommand::RSET, cmd);
+    assert_eq!("", rem);
+}
+
+#[test]
 fn parse_command_quit_simple() {
     let (rem, cmd) = parse_command("QUIT").unwrap();
 

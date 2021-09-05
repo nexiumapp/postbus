@@ -46,7 +46,7 @@ pub fn parse(input: &str) -> (Vec<(&str, Option<ParseCommand>)>, Option<&str>) {
 
 fn parse_command(input: &str) -> NomResult<ParseCommand> {
     alt((
-        parse_ehlo, parse_helo, parse_mail, parse_rcpt, parse_data, parse_quit,
+        parse_ehlo, parse_helo, parse_mail, parse_rcpt, parse_data, parse_rset, parse_quit,
     ))(input)
 }
 
@@ -80,6 +80,12 @@ fn parse_data(input: &str) -> NomResult<ParseCommand> {
     let (rem, _) = terminated(tag_no_case("DATA"), eof)(input)?;
 
     Ok((rem, ParseCommand::DATA))
+}
+
+fn parse_rset(input: &str) -> NomResult<ParseCommand> {
+    let (rem, _) = terminated(tag_no_case("RSET"), eof)(input)?;
+
+    Ok((rem, ParseCommand::RSET))
 }
 
 fn parse_quit(input: &str) -> NomResult<ParseCommand> {
