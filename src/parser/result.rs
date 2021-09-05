@@ -6,6 +6,7 @@ pub enum ParseCommand<'a> {
     EHLO(DomainParam<'a>),
     HELO(DomainParam<'a>),
     FROM(MailboxParam<'a>),
+    RCPT(MailboxParam<'a>),
     DATA,
 }
 
@@ -16,6 +17,9 @@ impl<'a> Display for ParseCommand<'a> {
             ParseCommand::HELO(ident) => writeln!(f, "HELO {:?}", ident),
             ParseCommand::FROM(MailboxParam(user, DomainParam(domain))) => {
                 writeln!(f, "MAIL FROM: {}@{}", user, domain)
+            }
+            ParseCommand::RCPT(MailboxParam(user, DomainParam(domain))) => {
+                writeln!(f, "RCPT TO: {}@{}", user, domain)
             }
             ParseCommand::DATA => writeln!(f, "DATA"),
         }

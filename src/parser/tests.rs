@@ -206,6 +206,20 @@ fn parse_command_from_nobracket() {
 }
 
 #[test]
+fn parse_command_rcpt_simple() {
+    let (rem, cmd) = parse_command("RCPT TO:<sendme@nexium.app>").unwrap();
+
+    assert_eq!(
+        result::ParseCommand::RCPT(result::MailboxParam(
+            "sendme",
+            result::DomainParam("nexium.app")
+        )),
+        cmd
+    );
+    assert_eq!("", rem);
+}
+
+#[test]
 fn parse_command_data_simple() {
     let (rem, cmd) = parse_command("DATA").unwrap();
 

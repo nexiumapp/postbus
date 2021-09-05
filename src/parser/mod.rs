@@ -45,7 +45,7 @@ pub fn parse(input: &str) -> (Vec<(&str, Option<ParseCommand>)>, Option<&str>) {
 }
 
 fn parse_command(input: &str) -> NomResult<ParseCommand> {
-    alt((parse_ehlo, parse_helo, parse_mail, parse_data))(input)
+    alt((parse_ehlo, parse_helo, parse_mail, parse_rcpt, parse_data))(input)
 }
 
 fn parse_ehlo(input: &str) -> NomResult<ParseCommand> {
@@ -65,6 +65,13 @@ fn parse_mail(input: &str) -> NomResult<ParseCommand> {
     let (_, _, mailbox, _) = res;
 
     Ok((rem, ParseCommand::FROM(mailbox)))
+}
+
+fn parse_rcpt(input: &str) -> NomResult<ParseCommand> {
+    let (rem, res) = tuple((tag_no_case("RCPT TO:"), opt(tag(" ")), parse_path, eof))(input)?;
+    let (_, _, mailbox, _) = res;
+
+    Ok((rem, ParseCommand::RCPT(mailbox)))
 }
 
 fn parse_data(input: &str) -> NomResult<ParseCommand> {
