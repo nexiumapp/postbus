@@ -228,6 +228,14 @@ fn parse_command_data_simple() {
 }
 
 #[test]
+fn parse_command_quit_simple() {
+    let (rem, cmd) = parse_command("QUIT").unwrap();
+
+    assert_eq!(result::ParseCommand::QUIT, cmd);
+    assert_eq!("", rem);
+}
+
+#[test]
 fn parse_mailbox_simple() {
     let (rem, res) = parse_mailbox("postbus@nexium.app ").unwrap();
 

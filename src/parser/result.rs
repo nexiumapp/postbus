@@ -8,6 +8,7 @@ pub enum ParseCommand<'a> {
     FROM(MailboxParam<'a>),
     RCPT(MailboxParam<'a>),
     DATA,
+    QUIT,
 }
 
 impl<'a> Display for ParseCommand<'a> {
@@ -22,6 +23,7 @@ impl<'a> Display for ParseCommand<'a> {
                 writeln!(f, "RCPT TO: {}@{}", user, domain)
             }
             ParseCommand::DATA => writeln!(f, "DATA"),
+            ParseCommand::QUIT => writeln!(f, "QUIT"),
         }
     }
 }

@@ -45,7 +45,9 @@ pub fn parse(input: &str) -> (Vec<(&str, Option<ParseCommand>)>, Option<&str>) {
 }
 
 fn parse_command(input: &str) -> NomResult<ParseCommand> {
-    alt((parse_ehlo, parse_helo, parse_mail, parse_rcpt, parse_data))(input)
+    alt((
+        parse_ehlo, parse_helo, parse_mail, parse_rcpt, parse_data, parse_quit,
+    ))(input)
 }
 
 fn parse_ehlo(input: &str) -> NomResult<ParseCommand> {
@@ -78,6 +80,12 @@ fn parse_data(input: &str) -> NomResult<ParseCommand> {
     let (rem, _) = terminated(tag_no_case("DATA"), eof)(input)?;
 
     Ok((rem, ParseCommand::DATA))
+}
+
+fn parse_quit(input: &str) -> NomResult<ParseCommand> {
+    let (rem, _) = terminated(tag_no_case("QUIT"), eof)(input)?;
+
+    Ok((rem, ParseCommand::QUIT))
 }
 
 fn parse_path(input: &str) -> NomResult<result::MailboxParam> {
