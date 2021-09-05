@@ -1,7 +1,6 @@
 use nom::branch::alt;
 use nom::bytes::complete::{is_a, tag, tag_no_case};
 use nom::character::complete::{alphanumeric1, satisfy};
-use nom::character::is_alphanumeric;
 use nom::combinator::{eof, opt, recognize};
 use nom::multi::{many0, many1};
 use nom::sequence::{delimited, pair, preceded, terminated, tuple};
@@ -139,7 +138,11 @@ fn parse_atom(input: &str) -> NomResult<&str> {
 
 fn parse_atext(input: &str) -> NomResult<&str> {
     alt((
-        recognize(satisfy(|c| is_alphanumeric(c as u8))),
+        recognize(satisfy(|c| {
+            let val = c as u8;
+
+            (val >= 48 && val <= 57) || (val >= 65 && val <= 90) || (val >= 97 && val <= 122)
+        })),
         is_a("!#$%&'*+-/=?^_`{|}~"),
     ))(input)
 }
