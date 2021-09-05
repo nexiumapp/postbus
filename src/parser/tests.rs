@@ -3,6 +3,13 @@ use nom::error::ParseError;
 use super::*;
 
 #[test]
+fn parse_partial() {
+    let err = parse("MAIL FR").unwrap_err();
+
+    assert_eq!(nom::Err::Incomplete(nom::Needed::new(3)), err);
+}
+
+#[test]
 fn parse_ehlo_simple() {
     let (rem, cmd) = parse("EHLO nexium.app\r\n").unwrap();
 
