@@ -39,13 +39,13 @@ async fn handle_socket(socket: TcpStream) {
                     Err(_) => panic!("Received non-utf8 characters."),
                 };
 
-                let res = postbus::parser::parse(input);
-                println!("Received {:?}", buf);
+                let (commands, remaining) = postbus::parser::parse(input);
 
-                if let Ok((rem, cmd)) = res {
-                    println!("Parsed {}", cmd);
-                    println!("Remaining {:?}", rem);
+                for (remaining, command) in commands {
+                    println!("Received: \"{}\", Parsed: {:?}", remaining, command);
                 }
+
+                println!("Remaining: \"{:?}\"", remaining);
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 continue;
