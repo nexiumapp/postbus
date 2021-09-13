@@ -7,14 +7,11 @@ fn parse_single() {
     let (cmds, rem) = parse("EHLO nexium.app\r\n");
 
     assert_eq!(1, cmds.len());
-    assert!(rem.is_none());
+    assert_eq!("", rem);
 
     let first = cmds.get(0).unwrap();
     let parsed = first.1.as_ref().unwrap();
-    assert_eq!(
-        result::ParseCommand::EHLO(result::DomainParam("nexium.app")),
-        *parsed
-    );
+    assert_eq!(Command::EHLO(Domain("nexium.app".to_string())), *parsed);
 }
 
 #[test]
@@ -22,23 +19,20 @@ fn parse_multiple() {
     let (cmds, rem) = parse("EHLO nexium.app\r\nMAIL FROM:<info@nexium.app>\r\n");
 
     assert_eq!(2, cmds.len());
-    assert!(rem.is_none());
+    assert_eq!("", rem);
 
     let first = cmds.get(0).unwrap();
     let parsed = first.1.as_ref().unwrap();
 
-    assert_eq!(
-        result::ParseCommand::EHLO(result::DomainParam("nexium.app")),
-        *parsed
-    );
+    assert_eq!(Command::EHLO(Domain("nexium.app".to_string())), *parsed);
 
     let second = cmds.get(1).unwrap();
     let parsed = second.1.as_ref().unwrap();
     assert_eq!(
-        result::ParseCommand::FROM(result::MailboxParam(
-            "info",
-            result::DomainParam("nexium.app")
-        )),
+        Command::FROM(Mailbox {
+            local: "info".to_string(),
+            domain: "nexium.app".into()
+        }),
         *parsed
     );
 }
@@ -48,15 +42,11 @@ fn parse_unfinished() {
     let (cmds, rem) = parse("EHLO nexium.app\r\nMAIL FR");
 
     assert_eq!(1, cmds.len());
-    assert!(rem.is_some());
-    assert_eq!("MAIL FR", rem.unwrap());
+    assert_eq!("MAIL FR", rem);
 
     let first = cmds.get(0).unwrap();
     let parsed = first.1.as_ref().unwrap();
-    assert_eq!(
-        result::ParseCommand::EHLO(result::DomainParam("nexium.app")),
-        *parsed
-    );
+    assert_eq!(Command::EHLO(Domain("nexium.app".to_string())), *parsed);
 }
 
 #[test]
@@ -64,7 +54,7 @@ fn parse_empty() {
     let (cmds, rem) = parse("");
 
     assert_eq!(0, cmds.len());
-    assert!(rem.is_none());
+    assert_eq!("", rem);
 }
 
 #[test]
@@ -72,8 +62,7 @@ fn parse_invalid_valid() {
     let (cmds, rem) = parse("THIS IS AN ERROR\r\nMAIL FROM:<info@nexium.app>\r\nRC");
 
     assert_eq!(2, cmds.len());
-    assert!(rem.is_some());
-    assert_eq!("RC", rem.unwrap());
+    assert_eq!("RC", rem);
 
     let first = cmds.get(0).unwrap();
     assert_eq!("THIS IS AN ERROR", first.0);
@@ -82,10 +71,10 @@ fn parse_invalid_valid() {
     let second = cmds.get(1).unwrap();
     let parsed = second.1.as_ref().unwrap();
     assert_eq!(
-        result::ParseCommand::FROM(result::MailboxParam(
-            "info",
-            result::DomainParam("nexium.app")
-        )),
+        Command::FROM(Mailbox {
+            local: "info".to_string(),
+            domain: "nexium.app".into()
+        }),
         *parsed
     );
 }
@@ -120,10 +109,7 @@ fn parse_command_partial_input() {
 fn parse_command_ehlo_simple() {
     let (rem, cmd) = parse_command("EHLO nexium.app").unwrap();
 
-    assert_eq!(
-        result::ParseCommand::EHLO(result::DomainParam("nexium.app")),
-        cmd
-    );
+    assert_eq!(Command::EHLO(Domain("nexium.app".to_string())), cmd);
     assert_eq!("", rem);
 }
 
@@ -144,10 +130,7 @@ fn parse_command_ehlo_empty_with_space() {
 fn parse_command_helo_simple() {
     let (rem, cmd) = parse_command("HELO nexium.app").unwrap();
 
-    assert_eq!(
-        result::ParseCommand::HELO(result::DomainParam("nexium.app")),
-        cmd
-    );
+    assert_eq!(Command::HELO(Domain("nexium.app".to_string())), cmd);
     assert_eq!("", rem);
 }
 
@@ -169,10 +152,10 @@ fn parse_command_from_simple() {
     let (rem, cmd) = parse_command("MAIL FROM:<hello@nexium.app>").unwrap();
 
     assert_eq!(
-        result::ParseCommand::FROM(result::MailboxParam(
-            "hello",
-            result::DomainParam("nexium.app")
-        )),
+        Command::FROM(Mailbox {
+            local: "hello".to_string(),
+            domain: "nexium.app".into()
+        }),
         cmd
     );
     assert_eq!("", rem);
@@ -183,10 +166,10 @@ fn parse_command_from_space() {
     let (rem, cmd) = parse_command("MAIL FROM: <hello@nexium.app>").unwrap();
 
     assert_eq!(
-        result::ParseCommand::FROM(result::MailboxParam(
-            "hello",
-            result::DomainParam("nexium.app")
-        )),
+        Command::FROM(Mailbox {
+            local: "hello".to_string(),
+            domain: "nexium.app".into()
+        }),
         cmd
     );
     assert_eq!("", rem);
@@ -210,10 +193,10 @@ fn parse_command_rcpt_simple() {
     let (rem, cmd) = parse_command("RCPT TO:<sendme@nexium.app>").unwrap();
 
     assert_eq!(
-        result::ParseCommand::RCPT(result::MailboxParam(
-            "sendme",
-            result::DomainParam("nexium.app")
-        )),
+        Command::RCPT(Mailbox {
+            local: "sendme".to_string(),
+            domain: "nexium.app".into()
+        }),
         cmd
     );
     assert_eq!("", rem);
@@ -223,7 +206,7 @@ fn parse_command_rcpt_simple() {
 fn parse_command_data_simple() {
     let (rem, cmd) = parse_command("DATA").unwrap();
 
-    assert_eq!(result::ParseCommand::DATA, cmd);
+    assert_eq!(Command::DATA, cmd);
     assert_eq!("", rem);
 }
 
@@ -231,7 +214,7 @@ fn parse_command_data_simple() {
 fn parse_command_reset_simple() {
     let (rem, cmd) = parse_command("RSET").unwrap();
 
-    assert_eq!(result::ParseCommand::RSET, cmd);
+    assert_eq!(Command::RSET, cmd);
     assert_eq!("", rem);
 }
 
@@ -239,7 +222,7 @@ fn parse_command_reset_simple() {
 fn parse_command_quit_simple() {
     let (rem, cmd) = parse_command("QUIT").unwrap();
 
-    assert_eq!(result::ParseCommand::QUIT, cmd);
+    assert_eq!(Command::QUIT, cmd);
     assert_eq!("", rem);
 }
 
@@ -248,7 +231,10 @@ fn parse_mailbox_simple() {
     let (rem, res) = parse_mailbox("postbus@nexium.app ").unwrap();
 
     assert_eq!(
-        result::MailboxParam("postbus", result::DomainParam("nexium.app")),
+        Mailbox {
+            local: "postbus".to_string(),
+            domain: "nexium.app".into()
+        },
         res
     );
     assert_eq!(" ", rem);
@@ -259,7 +245,10 @@ fn parse_mailbox_quoted() {
     let (rem, res) = parse_mailbox("\"john\"@nexium.app").unwrap();
 
     assert_eq!(
-        result::MailboxParam("john", result::DomainParam("nexium.app")),
+        Mailbox {
+            local: "john".to_string(),
+            domain: "nexium.app".into()
+        },
         res
     );
     assert_eq!("", rem);
@@ -270,7 +259,10 @@ fn parse_mailbox_numbered() {
     let (rem, res) = parse_mailbox("1234567890@nexium.app").unwrap();
 
     assert_eq!(
-        result::MailboxParam("1234567890", result::DomainParam("nexium.app")),
+        Mailbox {
+            local: "1234567890".to_string(),
+            domain: "nexium.app".into()
+        },
         res
     );
     assert_eq!("", rem);
@@ -306,7 +298,7 @@ fn parse_mailbox_nouser() {
 fn parse_domain_normal() {
     let (rem, res) = parse_domain("nexium.app").unwrap();
 
-    assert_eq!(result::DomainParam("nexium.app"), res);
+    assert_eq!(Domain("nexium.app".to_string()), res);
     assert_eq!("", rem);
 }
 
@@ -314,7 +306,7 @@ fn parse_domain_normal() {
 fn parse_domain_nested() {
     let (rem, res) = parse_domain("very.deep.nesting.nexium.app").unwrap();
 
-    assert_eq!(result::DomainParam("very.deep.nesting.nexium.app"), res);
+    assert_eq!(Domain("very.deep.nesting.nexium.app".to_string()), res);
     assert_eq!("", rem);
 }
 
@@ -335,7 +327,7 @@ fn parse_domain_firstdot() {
 fn parse_domain_lastdot() {
     let (rem, res) = parse_domain("nexium.app.").unwrap();
 
-    assert_eq!(result::DomainParam("nexium.app"), res);
+    assert_eq!(Domain("nexium.app".to_string()), res);
     assert_eq!(".", rem);
 }
 

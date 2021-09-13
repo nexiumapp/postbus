@@ -6,25 +6,24 @@ use nom::multi::{many0, many1};
 use nom::sequence::{delimited, pair, preceded, terminated, tuple};
 use nom::IResult;
 
-pub mod result;
+use crate::command::{Command, Domain, Mailbox};
+
 #[cfg(test)]
 mod tests;
-
-use result::ParseCommand;
 
 type NomResult<'a, T> = IResult<&'a str, T>;
 
 /// Parse an SMTP command.
 /// It automatically splits the commands into lines, so raw strings can be put in.
-pub fn parse(input: &str) -> (Vec<(&str, Option<ParseCommand>)>, Option<&str>) {
+pub fn parse(input: &str) -> (Vec<(&str, Option<Command>)>, &str) {
     let mut result = Vec::new();
-    let mut remaining = None;
+    let mut remaining = "";
 
     let mut lines = input.lines().peekable();
 
     while let Some(line) = lines.next() {
         if lines.peek().is_none() && !input.ends_with('\n') {
-            remaining = Some(line);
+            remaining = line;
             break;
         }
 
@@ -44,74 +43,112 @@ pub fn parse(input: &str) -> (Vec<(&str, Option<ParseCommand>)>, Option<&str>) {
     (result, remaining)
 }
 
-fn parse_command(input: &str) -> NomResult<ParseCommand> {
+/// Parse a data line.
+/// This is not done with Nom.
+/// The returning tuple contains:
+/// - Boolean indicating if an end of data state was reached.
+/// - String with the data, this is only complete if the boolean is true.
+/// - Remaining string with input after the data end. This is only non-empty if the boolean is true.
+pub fn parse_data_lines(input: &str) -> (bool, String, String) {
+    let mut has_ended = false;
+    let mut result = Vec::new();
+    let mut remaining = Vec::new();
+
+    let mut lines = input.lines().peekable();
+
+    while let Some(line) = lines.next() {
+        if has_ended {
+            remaining.push(line);
+        }
+
+        if line == "." {
+            has_ended = true;
+        }
+
+        if line.starts_with(".") {
+            result.push(&line[1..]);
+        } else {
+            result.push(line);
+        }
+    }
+
+    (has_ended, result.join("\r\n"), remaining.join("\r\n"))
+}
+
+fn parse_command(input: &str) -> NomResult<Command> {
     alt((
         parse_ehlo, parse_helo, parse_mail, parse_rcpt, parse_data, parse_rset, parse_quit,
     ))(input)
 }
 
-fn parse_ehlo(input: &str) -> NomResult<ParseCommand> {
+fn parse_ehlo(input: &str) -> NomResult<Command> {
     let (rem, domain) = delimited(tag_no_case("EHLO "), parse_domain, eof)(input)?;
 
-    Ok((rem, ParseCommand::EHLO(domain)))
+    Ok((rem, Command::EHLO(domain)))
 }
 
-fn parse_helo(input: &str) -> NomResult<ParseCommand> {
+fn parse_helo(input: &str) -> NomResult<Command> {
     let (rem, domain) = delimited(tag_no_case("HELO "), parse_domain, eof)(input)?;
 
-    Ok((rem, ParseCommand::HELO(domain)))
+    Ok((rem, Command::HELO(domain)))
 }
 
-fn parse_mail(input: &str) -> NomResult<ParseCommand> {
+fn parse_mail(input: &str) -> NomResult<Command> {
     let (rem, res) = tuple((tag_no_case("MAIL FROM:"), opt(tag(" ")), parse_path, eof))(input)?;
     let (_, _, mailbox, _) = res;
 
-    Ok((rem, ParseCommand::FROM(mailbox)))
+    Ok((rem, Command::FROM(mailbox)))
 }
 
-fn parse_rcpt(input: &str) -> NomResult<ParseCommand> {
+fn parse_rcpt(input: &str) -> NomResult<Command> {
     let (rem, res) = tuple((tag_no_case("RCPT TO:"), opt(tag(" ")), parse_path, eof))(input)?;
     let (_, _, mailbox, _) = res;
 
-    Ok((rem, ParseCommand::RCPT(mailbox)))
+    Ok((rem, Command::RCPT(mailbox)))
 }
 
-fn parse_data(input: &str) -> NomResult<ParseCommand> {
+fn parse_data(input: &str) -> NomResult<Command> {
     let (rem, _) = terminated(tag_no_case("DATA"), eof)(input)?;
 
-    Ok((rem, ParseCommand::DATA))
+    Ok((rem, Command::DATA))
 }
 
-fn parse_rset(input: &str) -> NomResult<ParseCommand> {
+fn parse_rset(input: &str) -> NomResult<Command> {
     let (rem, _) = terminated(tag_no_case("RSET"), eof)(input)?;
 
-    Ok((rem, ParseCommand::RSET))
+    Ok((rem, Command::RSET))
 }
 
-fn parse_quit(input: &str) -> NomResult<ParseCommand> {
+fn parse_quit(input: &str) -> NomResult<Command> {
     let (rem, _) = terminated(tag_no_case("QUIT"), eof)(input)?;
 
-    Ok((rem, ParseCommand::QUIT))
+    Ok((rem, Command::QUIT))
 }
 
-fn parse_path(input: &str) -> NomResult<result::MailboxParam> {
+fn parse_path(input: &str) -> NomResult<Mailbox> {
     delimited(tag("<"), parse_mailbox, tag(">"))(input)
 }
 
-fn parse_mailbox(input: &str) -> NomResult<result::MailboxParam> {
+fn parse_mailbox(input: &str) -> NomResult<Mailbox> {
     let (rem, res) = tuple((parse_localpart, tag("@"), parse_domain))(input)?;
     let (user, _, domain) = res;
 
-    Ok((rem, result::MailboxParam(user, domain)))
+    Ok((
+        rem,
+        Mailbox {
+            domain,
+            local: user.to_string(),
+        },
+    ))
 }
 
-fn parse_domain(input: &str) -> NomResult<result::DomainParam> {
+fn parse_domain(input: &str) -> NomResult<Domain> {
     let (rem, res) = recognize(pair(
         parse_subdomain,
         many0(pair(tag("."), parse_subdomain)),
     ))(input)?;
 
-    Ok((rem, result::DomainParam(res)))
+    Ok((rem, res.into()))
 }
 
 fn parse_subdomain(input: &str) -> NomResult<&str> {
